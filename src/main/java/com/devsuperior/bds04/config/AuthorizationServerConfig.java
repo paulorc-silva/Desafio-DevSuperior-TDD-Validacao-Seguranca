@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -72,14 +71,23 @@ public class AuthorizationServerConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain asSecurityFilterChain(HttpSecurity http) throws Exception {
-        // @formatter:off
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .tokenEndpoint(tokenEndpoint -> tokenEndpoint
-                        .accessTokenRequestConverter(new CustomPasswordAuthenticationConverter())
-                        .authenticationProvider(new CustomPasswordAuthenticationProvider(authorizationService(), tokenGenerator(), userDetailsService, passwordEncoder)));
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
 
-        http.oauth2ResourceServer(oauth2ResourceServer -> oauth2ResourceServer.jwt(Customizer.withDefaults()));
-        // @formatter:on
+        http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+            .with(authorizationServerConfigurer, authorizationServer ->
+                authorizationServer.tokenEndpoint(tokenEndpoint ->
+                    tokenEndpoint
+                        .accessTokenRequestConverter(new CustomPasswordAuthenticationConverter())
+                        .authenticationProvider(
+                            new CustomPasswordAuthenticationProvider(
+                                    authorizationService(),
+                                    tokenGenerator(),
+                                    userDetailsService,
+                                    passwordEncoder
+                            )
+                        )
+                )
+            );
 
         return http.build();
     }
